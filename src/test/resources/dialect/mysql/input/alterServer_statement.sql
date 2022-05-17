@@ -1,0 +1,1 @@
+ALTER SERVER s OPTIONS (USER 'sally');
