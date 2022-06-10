@@ -1,183 +1,358 @@
-# 问题记录
+# openGauss-tools-sql-translator
 
-## 13.2.9 SELECT Statement
->1. SELECT ... INTO Statement无法兼容，MySQL的into_option有OUTFILE、DUMPFILE、var_name,而openGauss是 new_table
->2. openGauss不支持DISTINCTROW、HIGH_PRIORITY、STRAIGHT_JOIN、SQL_SMALL_RESULT、SQL_BIG_RESULT、SQL_BUFFER_RESULT、SQL_CACHE、 SQL_NO_CACHE、 SQL_CALC_FOUND_ROWS、PROCEDURE procedure_name(argument_list)字段
->3. druid不解析PARTITION partition_list字段
->4. 在字段table_references中，MySQL 支持 INNER、CROSS、LEFT [OUTER]、RIGHT [OUTER]、NATURAL、STRAIGHT_JOIN六种join类型，openGauss 不支持 STRAIGHT_JOIN 这种类型，STRAIGHT_JOIN 功能同 JOIN 类似，使用 JOIN 替代
+## 介绍
 
-## 13.2.11 UPDATE Statement
-> 1. Mysql:ignore关键词  opengauss：无同义词
-> 2. Mysql：low_priority关键词 opengauss:无同义词
-> 3. index hint转换，需求后置
-> 4. optimizer hint转换，需求后置
-> 5. MySQL:order by ,limit。 opengauss：无
+openGauss-tools-sql-translator是一个使用java编写的实现MySQL向openGauss语法转换的翻译器。其基于1.2.8版本Druid实现，利用Druid对AST的访问规则，继承MySQLOutPutVisitor并重载其visit方法，修改其对MySQL语句 AST的访问结果，最终输出openGauss语法的语句。应用于从MySQL到openGauss。
 
-## 13.1.12 CREATE FUNCTION Statement
-> 1. druid不支持解析create function语句中的iterate关键词
-> 2. MySQL:DEFINER;openGauss:无
-> 3. MySQL:DETERMINISTIC;openGauss：该关键词无效，仅语法兼容 用IMMUTABLE替换
-> 4. MySQL:COMMENT;openGauss：无
-> 5. MySQL:LANGUAGE SQL;openGauss:无
-> 6. druid不支持解析CONTAINS SQL|NO SQL|READS SQL DATA|MODIFIES SQL DATA、SECURITY字段
+## 编译步骤
 
-## 13.1.16 CREATE PROCEDURE Statement 
->1. MySQL存在DEFINER、COMMENT、LANGUAGE SQL、CONTAINS SQL|NO SQL|READS SQL DATA|MODIFIES SQL 字段，openGauss不支持该字段
->2. druid不支持解析SECURITY字段
->3. 用IMMUTABLE替换MySQL的DETERMINISTIC
+* 安装环境： java，maven，git
+* 源数据库要求：MySQL 5.7。目的数据库要求：openGauss 3.0.0
+* 打包命令：mvn package
 
-## 13.1.14 create index
-> 1. openGauss 不支持对字符列的前缀建立索引
-> 2. 索引类型hash不支持 asc/desc选项
-> 3. openGauss 不支持mysql的大部分index options
-> 4. 当lock=none，或者algorithm=inplace并且lock=default时，openGauss会指定concurrently关键字。
+## MySQL与openGauss的兼容性说明
 
-## 13.1.18 create table
+根据SQL语句在MySQL5.7官方文档和openGauss 3.0.0官方文档的差异对比，对各SQL语句进行翻译。
+
+### [13.1.1 ALTER DATABASE Statement](https://dev.mysql.com/doc/refman/5.7/en/alter-database.html)
+
+> 1. 该语句openGauss和MySQL无法兼容,MySQL一定要有alter_option才能alter database，openGuass没有任何一个对应的alter_option
+
+### [13.1.2 ALTER EVENT Statement](https://dev.mysql.com/doc/refman/5.7/en/alter-event.html)
+
+> 1. openGauss不存在该语句
+
+### [13.1.3 ALTER FUNCTION Statement](https://dev.mysql.com/doc/refman/5.7/en/alter-function.html)
+
+> 1. 无法支持，在openGauss中该字段的argtype是必须的，而Druid的alter function无法获取该字段。就算可以获取，MySQL的characteristic也只能翻译SECURITY字段
+
+### [13.1.4 ALTER INSTANCE Statement](https://dev.mysql.com/doc/refman/5.7/en/alter-instance.html)
+
+> 1. openGauss不存在该语句，同时Druid也没有该语句的解析
+
+### [13.1.5 ALTER LOGFILE GROUP Statement](https://dev.mysql.com/doc/refman/5.7/en/alter-logfile-group.html)
+
+> 1. openGauss不存在该语句
+
+### [13.1.6 ALTER PROCEDURE Statement](https://dev.mysql.com/doc/refman/5.7/en/alter-procedure.html)
+
+> 1. openGauss不存在该语句，同时Druid也没有该语句的解析
+
+### [13.1.7 ALTER SERVER Statement](https://dev.mysql.com/doc/refman/5.7/en/alter-server.html)
+
+> 1. 该语句openGauss和MySQL无法兼容，MySQL对于foreign data wrapper的支持与openGauss不同
+
+### [13.1.8 ALTER TABLE Statement](https://dev.mysql.com/doc/refman/5.7/en/alter-table.html)
+
+> 1. openGauss不支持first、after字段、index_type、index_option、fulltext、spatial字段，注释掉
+> 2. openGauss的add foreign key、add unique key 不支持index_name；druid不解析add unique key的constraint  symbol
+> 3. openGauss不支持algorithm、character set、 convert to character set、disable|enable keys、discard|import tablespace、drop index、drop primary key、drop foreign key、force、lock、order by、without|with validation
+> 4. alter table 的 change和modify 关键字都翻译成先drop后add的形式
+> 5. openGauss 不支持 rename index，支持重名表名字，但是需要分开成两个语句编写
+
+### [13.1.9 ALTER TABLESPACE Statement](https://dev.mysql.com/doc/refman/5.7/en/alter-tablespace.html)
+
+> 1. 该语句openGauss和MySQL无法兼容。{ADD | DROP} DATAFILE 'file_name' 无法翻译，所以整个语句不支持翻译。
+
+### [13.1.10 ALTER VIEW Statement](https://dev.mysql.com/doc/refman/5.7/en/alter-view.html)
+
+> 1. MySQL存在ALGORITHM、DEFINER、SQL SECURITY、 [WITH [CASCADED | LOCAL] CHECK OPTION]字段，openGauss不支持这些字段
+
+### [13.1.11 CREATE DATABASE Statement](https://dev.mysql.com/doc/refman/5.7/en/create-database.html)
+
+> 1. 对应openGauss的SCHEMA，MySQL的create_option有 CHARACTER SET或 COLLATE字段，openGauss不支持
+
+### [13.1.12 CREATE EVENT Statement](https://dev.mysql.com/doc/refman/5.7/en/create-event.html)
+
+> 1. openGauss不存在该语句
+
+### [13.1.13 CREATE FUNCTION Statement](https://dev.mysql.com/doc/refman/5.7/en/create-function.html)
+
+> 1. MySQL存在DEFINER、COMMENT、LANGUAGE SQL、SECURITY、CONTAINS SQL|NO SQL|READS SQL DATA|MODIFIES SQL DATA字段，openGauss不支持这些字段
+> 2. Druid不支持解析CONTAINS SQL、NO SQL、READS SQL DATA、MODIFIES SQL DATA、SECURITY
+> 3. 把DETERMINISTIC翻译成openGauss的IMMUTABLE，当需要修改数据库时不能使用IMMUTABLE，此时用VOLATILE替换
+
+### [13.1.14 CREATE INDEX Statement](https://dev.mysql.com/doc/refman/5.7/en/create-index.html)
+
+> 1. openGauss不支持FULLTEXT | SPATIAL字段openGauss不存在该语句
+> 2. openGauss的CONCURRENTLY表示以不阻塞DML的方式创建索引。MySQL有以下两种情况可以转换为openGauss的CONCURRENTLY，和MySQL的lock和algorithm字段相关：
+>
+> * lock=none
+> * algorithm=inplace ，lock=default
+>
+> 3. 其他情况的lock和algorithm字段，openGauss不支持
+> 4. 当using hash和asc|desc同时存在时会报错，因为openGauss的hash只能处理简单等值比较，using btree才能用asc|desc
+> 5. openGauss不支持index_option（index_type除外）
+
+### [13.1.15 CREATE LOGFILE GROUP Statement](https://dev.mysql.com/doc/refman/5.7/en/create-logfile-group.html)
+
+> 1. openGauss不存在该语句
+
+### [13.1.16 CREATE PROCEDURE Statements](https://dev.mysql.com/doc/refman/5.7/en/create-procedure.html)
+
+> 1. MySQL存在DEFINER、COMMENT、LANGUAGE SQL、CONTAINS SQL|NO SQL|READS SQL DATA|MODIFIES SQL 字段，openGauss不支持该字段
+> 2. Druid不支持解析NO SQL|READS SQL DATA|MODIFIES SQL字段druid不支持解析SECURITY字
+> 3. 把DETERMINISTIC翻译成openGauss的IMMUTABLE，当需要修改数据库时不能使用IMMUTABLE，此时用VOLATILE替换用IMMUTABLE替换MySQL的DETERMINISTI
+
+### [13.1.17 CREATE SERVER Statement](https://dev.mysql.com/doc/refman/5.7/en/create-server.html)
+
+> 1. 该语句openGauss和MySQL无法兼容
+
+### [13.1.18 CREATE TABLE Statement](https://dev.mysql.com/doc/refman/5.7/en/create-table.html)
+
 > 1. 数据类型: openGauss 不支持YEAR类型，ENUM和SET类型
-> 2. 列定义: 
->   * openGauss 不支持浮点数和大于八个字节的整数自增，可以用bigserial达到整数自增的效果
->   * openGauss 不支持unsigned，目前解决方法是和chameleon一样直接去掉unsigned。
->   * openGauss 不支持指定character set
->   * openGauss 不支持zerofill 和 visible，storage，column format 关键字
->   * openGauss 不支持在建表的时候使用comment和index，只支持单独create comment和index,需要一条sql语句生成多条sql语句来实现。
->   * openGauss 不支持使用as 自动生成的列的值 
->   * openGauss 的collation和MySql 的 collation不兼容
->   * druid 无法识别unique 约束的约束名symbol
->   * openGauss 不支持在建表的时候指定index name，index type和index option
->   * openGauss 不支持enforced关键字
->   * druid 无法识别create procedure 时characteristic中的大部分关键字
-> 3. openGauss的根据查询结果创建表和mysql有本质不同，不翻译
-> 4. 分区(partition)
->   * 不翻译partition by hash(methodInvokeExpr),hash by list(methodInvokeExpr),hash by range(methodInvokeExpr),generated always as (methodInvokeExpr),openGauss 无法确保expr能够被正确解析.
->   * partition by key(column) 翻译成 partition by hash(column);
->   * openGauss 不支持partition definition 除了tablespace以外的所有关键字 
->   * openGauss partition by 的某些数据类型和mysql有冲突，该需求比较复杂，先后置
->   * openGauss partition name不可以省略,如果省略会报错。 
->   * openGauss 2.1.0版本似乎不满足子分区语法
->   * 对于从句是VALUES LESS THAN的语法格式，openGauss范围分区策略的分区键最多支持4列
+> 2. MySQL的createde_finition中，openGauss不支持在表约束中创建INDEX | KEY、 {FULLTEXT | SPATIAL} [INDEX | KEY]，也不支持index_type、index_option、index_name。此外，Druid无法识别unique约束的约束名symbol
+> 3. MySQL的column_definition中，openGauss不支持列约束中的COMMENT 、COLUMNFORMAT、STORAGE、GENERATED ALWAYS、VIRTUAL | STORED字段。AUTO_INCREMENT在openGauss中用bigserial达到整数自增的效果。COLLATE字段两者不兼容
+> 4. MySQL的table_option中，openGauss只支持TABLESPACE(不支持[STORAGE {DISK | MEMORY}]字段）
+> 5. openGauss 的create table as query expression 和 mysql有本质不同。MySQL在旧表上新加字段，openGauss是完全复制一样的表，无法转换
+> 6. MySQL的like 默认源表保留新表的默认值表达式，存储引擎属性，check 约束，注释。所以在openGauss添加额外的表属性信息，like语句的like_option默认为INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES INCLUDING STORAGE
+> 7. partition：
+>
+> * openGauss不支持LINEAR字段
+> * openGauss的PARTITION BY HASH的expr只翻译单个字段，openGauss 无法确保expr能够被正确解析；MySQL的PARTITION BY KEY需要翻译成 PARTITION BY HASH(column)，column_list只支持单列；PARTITION BY RANGE的expr仅支持单列，多列则解析失败，column_list支持多列;PARTITION BY LIST的expr只翻译单个字段，无法确保expr能够被正确解析,column_list也仅支持单列
+> * 不支持PARTITIONS num、SUBPARTITION num字段
+> * openGauss的partition name是必须的，所以MySQL要有partition_defition才可以翻译PARTITION
+> * openGauss partition by 的某些数据类型和mysql有冲突，该需求比较复杂，先后置
+> * Druid不解析SUBPARTITION BY KEY的ALGORITHM字段且openGauss不支持
+>
+> 8. 在MySQL的partition_definition中，openGauss仅支持VALUES、TABLESPACE字段；engine、max_rows、min_rows将注释掉（druid把min_rows解析成了max_rows)，comment、data directory、index directory将会引发语法错误，druid目前不解析
+> 9. 对于从句是VALUES LESS THAN的语法格式，openGauss范围分区策略的分区键最多支持4列
+> 10. 在MySQL的subpartition_definition中，openGauss仅支持TABLESPACE字段，engine、comment、data directory、index directory、max_rows、min_rows将注释掉
 
-## 13.2.2 Delete Statement
-> 1. <span style="color:red">OpenGauss不支持多表删除语法，多表删除的SQL无法翻译</span>
-> 2. low_priority、quick、ignore关键词不支持
-> 3. order by、limit不支持
-> 4. optimizer/index hint暂不支持
+### [13.1.19 CREATE TABLESPACE Statement](https://dev.mysql.com/doc/refman/5.7/en/create-tablespace.html)
 
-## 13.2.3 Do Statement
-> 1. druid不支持解析此语句
- 
-## 13.2.5 Insert Statement
-> 1. low_priority,delayed,high_priority,ignore关键词不支持
-> 2. OpenGauss insert不支持分区
+> 1. 该语句openGauss和MySQL无法兼容。ADD DATAFILE 'file_name'字段无法和openGauss的LOCATION 'directory'兼容。且durid代码存在无法解析add datafile的bug，已找到bug原因，考虑向durid仓库提出issue和pull_request修复
 
-## 13.6.5.6 REPEAT Statement
->1. `end repeat begin_lable;`语句，当有lable时会吞掉行末的分号;
+### [13.1.20 CREATE TRIGGER Statement](https://dev.mysql.com/doc/refman/5.7/en/create-trigger.html)
 
-## 13.6.5.3 ITERATE Statement
->1. druid不支持解析此语句；
+> 1. MySQL存在“[DEFINER = user]”字段，该DEFINER子句确定在触发器激活时检查访问权限时要使用的安全上下文。openGauss则不存在该字段
+> 2. MySQL存在trigger_order字段，openGuass不存在
+> 3. MySQL的trigger_body由一个有效的SQL例程语句或使用BEGIN AND编写的复合语句组成。openGauss通过EXECUTE PROCEDURE function_name来使用触发器函数，其中function_name 为用户定义的不带参数并返回类型为触发器的函数。所以需要把执行体转化成自定义函数，该函数名由UUID生成
 
-## 13.1.23 CREATE VIEW Statement
->1. Create View Statement 语句中不能包含 SELECT_INTO 子句，但 druid 无法检测该种错误
->2. druid 无法解析带 FOR_UPDATE_OF 子句的 Select Statement 语句
+### [13.1.21 CREATE VIEW Statement](https://dev.mysql.com/doc/refman/5.7/en/create-view.html)
 
-## 13.1.31 DROP TRIGGER Statement
->1. 该语句在openGauss中需要有ON table_name，而druid的drop trigger无法获取该字段
+> 1. MySQL存在ALGORITHM、DEFINER、SQL SECURITY、 [WITH [CASCADED | LOCAL] CHECK OPTION]字段，openGauss不支持这些字段
 
-## 13.1.1 ALTER DATABASE Statement
->1. 该语句openGauss和MySQL无法兼容,MySQL一定要有alter_option才能alter database，openGuass没有任何一个对应的alter_option
+### [13.1.22 DROP DATABASE Statement](https://dev.mysql.com/doc/refman/5.7/en/drop-database.html)
 
-## 13.1.10 CREATE DATABASE Statement
->1. 对应openGauss的SCHEMA，MySQL的create_option有 CHARACTER SET或 COLLATE字段，openGauss不支持
-## 13.1.3 ALTER FUNCTION Statement
->1. 无法支持，在openGauss中该字段的argtype是必须的，而druid的alter function无法获取该字段。就算可以获取，MySQL的characteristic也只能翻译SECURITY字段
+> 1. 完全支持
 
-## 13.1.6 ALTER PROCEDURE Statement
->1. openGauss不存在该语句，同时druid也没有该语句的解析
+### [13.1.23 DROP EVENT Statement](https://dev.mysql.com/doc/refman/5.7/en/drop-event.html)
 
-## 13.2.8 REPLACE Statement
->1. openGauss不存在该语句,与其同义的INSERT IGNORE也不存在
+> 1. openGauss不存在该语句
 
-## 13.1.5 ALTER LOGFILE GROUP Statement、13.1.14 CREATE LOGFILE GROUP Statement、13.1.25 DROP LOGFILE GROUP Statement
->1. openGauss不存在该语句
+### [13.1.24 DROP FUNCTION Statement](https://dev.mysql.com/doc/refman/5.7/en/drop-function.html)
 
-## 13.1.2 ALTER EVENT Statement、13.1.12 CREATE EVENT Statement、13.1.23 DROP EVENT Statement
->1. openGauss不存在该语句
+> 1. 无需翻译，完全支持
 
-## 13.7.6.3 FLUSH Statement
->1. openGauss不存在该语句
+### [13.1.25 DROP INDEX Statement](https://dev.mysql.com/doc/refman/5.7/en/drop-index.html)
 
-## 13.7.1.2 CREATE USER Statement
->1. druid不解析REQUIRE、WITH resource_option、password_option、lock_option字段且openGauss也不支持
->2. openGauss不支持IF EXISTS、auth_plugin字段
->3. openGauss的Account names不需要单引号，且没有host_name的部分，目前解决方法是截取user_name的部分并去除双引号
+> 1. openGauss不支持指定tbl_name
+> 2. openGauss的CONCURRENTLY表示以不阻塞DML的方式创建索引
+> 3. MySQL有以下两种情况可以转换为openGauss的CONCURRENTLY，和MySQL的lock和algorithm字段相关：
+>
+> * lock=none
+> * algorithm=inplace ，lock=default
+>
+> 4. 其他情况的lock和algorithm字段，openGauss不支持
 
-## 13.7.1.1 ALTER USER Statement
->1. druid不解析REQUIRE、WITH resource_option、lock_option字段，其中lock_option字段openGauss中存在
->2. openGauss不支持IF NOT EXISTS、user()、auth_plugin字段
->3. openGauss的Account names不需要单引号，且没有host_name的部分，目前解决方法是截取user_name的部分并去除双引号
->4. openGauss的password_option字段仅支持 PASSWORD EXPIRE
+### [13.1.26 DROP LOGFILE GROUP Statement](https://dev.mysql.com/doc/refman/5.7/en/drop-logfile-group.html)
 
-## 13.1.8 ALTER TABLE STATEMENT
->1. alter add index index_name (key),无法在openGauss上执行，已在openGauss仓库提出issue
->2. alter table 的 change和modify 关键字都翻译成先drop后add的形式
->3. druid 无法识别alter table testAlterTable DEFAULT CHARSET=latin1;
->4. openGauss 不支持 {DISABLE | ENABLE} KEYS  | {DISCARD | IMPORT} TABLESPACE
->5. openGauss 不支持 drop index,primary key,foreign key 以及force，lock,order by,关键字
->6. openGauss 不支持 rename index，支持重名表名字，但是需要分开成两个语句编写。
->7. openGauss 不支持analyze,alterTable,reorganize,rebuild,repair,optimize coalesce,discard,import,removing, upgrading partition
->8. openGauss 不支持alter table .. partition by ..
->9. mysql alter table 指定分区名时，没有表名该分区是分区还是子分区，暂时都默认为分区名。 
+> 1. openGauss不存在该语句
 
-## 13.7.1.5 RENAME USER Statement
->1. druid无法解析该语句多个用户同时重命名
+### [13.1.27 DROP PROCEDURE and DROP FUNCTION Statements](https://dev.mysql.com/doc/refman/5.7/en/drop-procedure.html)
 
-## 13.7.2 Table Maintenance Statements
->1. 13.7.2.1 ANALYZE TABLE Statement:openGuass的ANALYZE非临时表不能在一个匿名块、事务块、函数或存储过程内被执行。而MySQL没有此限制。
->2. 其余语句openGauss都不支持
-## 13.3.1 START TRANSACTION, COMMIT, and ROLLBACK Statements、13.3.6 SET TRANSACTION Statement
->1. openGauss不支持[AND [NO] CHAIN] [[NO] RELEASE]
->2. openGuass不支持WITH CONSISTENT SNAPSHOT
->3. openGuass不支持GLOBAL、READ UNCOMMITTED
+> 1. 无需翻译，完全支持
 
-## 13.6.6.3 Cursor FETCH Statement
->1. 不能兼容，MySQL的FETCH有INTO var_name字段，openGauss没有，无法提取的列存储在命名变量中
+### [13.1.28 DROP SERVER Statement](https://dev.mysql.com/doc/refman/5.7/en/drop-server.html)
 
-## 13.6.6.4 Cursor OPEN Statement
->1. openGauss不存在该语句
-## 13.6.7 Condition Handling
->1. openGauss不存在该语句
+> 1. 无需翻译，完全支持
 
-## 13.7.6.6 RESET Statement
->1. 不能兼容
+### [13.1.29 DROP TABLE Statement](https://dev.mysql.com/doc/refman/5.7/en/drop-table.html)
 
-## 13.7.3 Plugin and Loadable Function Statements
->1. openGauss不存在这些语句且druid不解析
+> 1. MySQL可以拥有TEMPORARY字段，仅删除TEMPORARY表，openGauss不支持，目前做法是直接把TEMPORARY注释掉
 
-## 13.1.16 CREATE SERVER Statement
->1. openGuass 不支持来自 mysql 的create server语句：openGauss仅支持oracle_fdw，mysql_fdw，postgres_fdw，mot_fdw范围内的foreign data wrapper，而mysql端目前来看仅支持名为mysql的foreign data wrapper。因此无法完成迁移。
->2. openGauss 不支持user,password,client_encoding和application_name这些参数。
->3. 翻译后的语句为空句+分号。
+### [13.1.30 DROP TABLESPACE Statement](https://dev.mysql.com/doc/refman/5.7/en/drop-tablespace.html)
 
-## 13.1.6 ALTER SERVER Statement
->1. druid仅支持解析mysql端相关语句中的user这一个参数。如果传入其他参数会报错。
->2. 因openGauss无法支持来自mysql侧的server语句，故取消alter server statment语句的支持。
->3. 翻译后的语句为空句+分号。
+> 1. ENGINE字段不支持该语句在openGauss中需要有ON table_name，而druid的drop trigger无法获取该字
 
-## 13.1.27 DROP SERVER Statement
->1. 因openGauss无法支持来自mysql侧的server语句，故取消alter server statment语句的支持。
->2. 翻译后的语句为空句+分号。
+### [13.1.31 DROP TRIGGER Statement](https://dev.mysql.com/doc/refman/5.7/en/drop-trigger.html)
 
-## 13.7.1.7 SET PASSWORD Statement、13.7.4.2 SET CHARACTER SET Statement、13.7.4.3 SET NAMES Statement
->1. openGauss不存在语句
+> 1. 该语句openGauss和MySQL无法兼容。opengauss的drop trigger需要ON table_name 而druid内该语句没有该字段定义
 
-## 13.1.21 CREATE TABLESPACE Statement
->1. 无法兼容。且durid代码存在无法解析add datafile的bug，已找到bug原因，考虑向durid仓库提出issue和pull_request修复。
+### [13.1.32 DROP VIEW Statement](https://dev.mysql.com/doc/refman/5.7/en/drop-view.html)
 
-## 13.1.9 ALTER TABLESPACE Statement
->1. 无法兼容。{ADD | DROP} DATAFILE 'file_name' 无法翻译，所以整个语句不支持翻译。
+> 1. 无需翻译，完全支持
 
-## 13.1.30 DROP TABLESPACE Statement
->1. 不支持指定 engine
+### [13.1.33 RENAME TABLE Statement](https://dev.mysql.com/doc/refman/5.7/en/rename-table.html)
 
-## 13.5 Prepared Statements
->1. MySQL通过使用字符串文字来提供语句的文本或将语句文本作为用户变量提供来创建PREPARE语句，两种方式openGauss都不支持，openGauss的PREPARE语句直接指明参数类型
->2. MySQL的EXECUTE语句也需要用到用户变量，openGauss不支持
+> 1. openGauss通过ALTER TABLE重名名表，可以用ALTER TABLE直接翻译
+
+### [13.1.34 TRUNCATE TABLE Statement](https://dev.mysql.com/doc/refman/5.7/en/truncate-table.html)
+
+> 1. 无需翻译，完全支持
+
+### [13.2.1 CALL Statement](https://dev.mysql.com/doc/refman/5.7/en/call.html)
+
+> 1. 无需翻译，完全支持
+
+### [13.2.2 DELETE Statement](https://dev.mysql.com/doc/refman/5.7/en/delete.html)
+
+> 1. low_priority、quick、ignore关键词不支持
+> 2. order by、limit不支持
+> 3. openGauss不支持partition_name有多个
+> 4. openGauss不支持多表删除语法
+
+### [13.2.3 DO Statement](https://dev.mysql.com/doc/refman/5.7/en/do.html)
+
+> 1. openGauss不存在该语句,且Druid不支持解析此语句
+
+### [13.2.4 HANDLER Statement](https://dev.mysql.com/doc/refman/5.7/en/handler.html)
+
+> 1. openGauss不存在该语句
+
+### [13.2.5 INSERT Statement](https://dev.mysql.com/doc/refman/5.7/en/insert.html)
+
+> 1. 不支持LOWPRIORITY | DELAYED | HIGHPRIORITY、IGNORE字段
+> 2. openGauss不支持partition_name有多个
+
+### [13.2.6 LOAD DATA Statement](https://dev.mysql.com/doc/refman/5.7/en/load-data.html)
+
+> 1. 无需翻译，存储过程体、函数体不支持该语句
+
+### [13.2.7 LOAD XML Statement](https://dev.mysql.com/doc/refman/5.7/en/load-xml.html)
+
+> 1. 无需翻译，存储过程体、函数体不支持该语句
+
+### [13.2.8 REPLACE Statement](https://dev.mysql.com/doc/refman/5.7/en/replace.html)
+
+> 1. openGauss不存在该语句，与其同义的INSERT IGNORE也不存在
+
+### [13.2.9 SELECT Statement](https://dev.mysql.com/doc/refman/5.7/en/select.html)
+
+> 1. openGauss不支持DISTINCTROW、HIGH_PRIORITY、STRAIGHT_JOIN、SQL_SMALL_RESULT、SQL_BIG_RESULT、SQL_BUFFER_RESULT、SQL_CACHE、 SQL_NO_CACHE、 SQL_CALC_FOUND_ROWS、PROCEDURE procedurename(argumentlist)字段
+> 2. Druid不解析PROCEDURE procedurename(argumentlist)字段，
+> 3. druid不解析PARTITION partition_list字段
+> 4. MySQL的SELECT... INTO var_list，openGauss仅支持变量是存储过程或函数参数，或存储过程或函数局部变量，不支持用户定义的变量（@开头的）。MySQL的SELECT ... INTO OUTFILE、SELECT ... INTO DUMPFILE，openGauss也不支持
+> 5. druid不解析PARTITION partition_list字段、SELECT ... INTO DUMPFILE
+> 6. 在字段table_references中，MySQL 支持 INNER、CROSS、LEFT [OUTER]、RIGHT [OUTER]、NATURAL、STRAIGHT_JOIN六种join类型，openGauss 不支持 STRAIGHT_JOIN 这种类型，STRAIGHT_JOIN 功能同 JOIN 类似，使用 JOIN 替代
+
+### [13.2.10 Subqueries](https://dev.mysql.com/doc/refman/5.7/en/subqueries.html)
+
+> 1. 无需翻译，完全支持
+
+### [13.2.11 UPDATE Statement](https://dev.mysql.com/doc/refman/5.7/en/update.html)
+
+> 1. openGauss不支持LOW_PRIORITY、IGNORE、ORDER BY ...、LIMIT rowcount字段
+> 2. tablereference字段在openGauss中只支持一个表名tablename
+
+### [13.3.1 START TRANSACTION, COMMIT, and ROLLBACK Statements](https://dev.mysql.com/doc/refman/5.7/en/commit.html) [13.3.6 SET TRANSACTION Statement](https://dev.mysql.com/doc/refman/5.7/en/set-transaction.html)
+
+> 1. 在STRAT TRANSACTION语句中，openGuass不支持WITH CONSISTENT SNAPSHOT字段
+> 2. 在BEGIN、COMMIT、ROLLBACK语句中,openGauss不支持AND [NO] CHAIN 、[NO] RELEASE字段
+> 3. 在SET TRANSACTION语句中,openGuass不支持GLOBAL、READ UNCOMMITTED字段。MySQL字段SESSION在openGauss中翻译为SESSION CHARACTERISTICS AS
+
+### [13.4 Replication Statements](https://dev.mysql.com/doc/refman/5.7/en/sql-replication-statements.html)
+
+> 1. openGauss不存在该语句
+
+### [13.5 Prepared Statements](https://dev.mysql.com/doc/refman/5.7/en/sql-prepared-statements.html)
+
+> 1. 该语句openGauss和MySQL无法兼容。
+>    * MySQL通过使用字符串文字来提供语句的文本或将语句文本作为用户变量提供来创建PREPARE语句，两种方式openGauss都不支持，openGauss的PREPARE语句直接指明参数类型
+>    * MySQL的EXECUTE语句也需要用到用户变量，openGauss不支持
+
+### [13.6.1 BEGIN ... END Compound Statement](https://dev.mysql.com/doc/refman/5.7/en/begin-end.html)
+
+> 1. 完全支持
+
+### [13.6.2 Statement Labels](https://dev.mysql.com/doc/refman/5.7/en/statement-labels.html)
+
+> 1. 完全支持
+
+### [13.6.3 DECLARE Statement](https://dev.mysql.com/doc/refman/5.7/en/declare.html)
+
+> 1. 完全支持
+
+### [13.6.5 Flow Control Statements](https://dev.mysql.com/doc/refman/5.7/en/flow-control-statements.html)
+
+> 1. 其中openGauss不支持ITERATE
+> 2. openGauss不存在REPEAT语句,用LOOP语句替换
+> 3. druid不支持解析case语句的第二种语法，因此无法转换
+> 4. CASE、IF、LEAVE、LOOP、REPEAT、RETURN、WHILE完全支持
+
+### [13.6.6 Cursors](https://dev.mysql.com/doc/refman/5.7/en/cursors.html)
+
+> 1. 无法兼容。MySQL的FETCH有INTO var_name字段，openGauss没有，无法提取的列存储在命名变量中
+
+### [13.6.7 Condition Handling](https://dev.mysql.com/doc/refman/5.7/en/condition-handling.html)
+
+> 1. openGauss不存在该语句
+
+### [13.7.1.1 ALTER USER Statement](https://dev.mysql.com/doc/refman/5.7/en/alter-user.html)
+
+> 1. druid不解析REQUIRE、WITH resource*option、lock*option字段，其中lock_option字段openGauss中存在
+> 2. openGauss不支持IF EXISTS、user()、auth_plugin字段
+> 3. openGauss的Account names不需要单引号，且没有hostname的部分，目前解决方法是截取username的部分并去除双引号
+> 4. openGauss的password_option字段仅支持 PASSWORD EXPIRE
+
+### [13.7.1.2 CREATE USER Statement](https://dev.mysql.com/doc/refman/5.7/en/create-user.html)
+
+> 1. druid不解析REQUIRE、WITH resourceoption、passwordoption、lock_option字段且openGauss也不支持
+> 2. openGauss不支持IF NOT EXISTS、auth_plugin字段
+> 3. openGauss的Account names不需要单引号，且没有hostname的部分，目前解决方法是截取username的部分并去除双引号
+
+### [13.7.1.3 DROP USER Statement](https://dev.mysql.com/doc/refman/5.7/en/drop-user.html)
+
+> 1. 无需翻译，完全支持
+
+### [13.7.1.4 GRANT Statement](https://dev.mysql.com/doc/refman/5.7/en/grant.html)
+
+> 1. opengauss无resource_option
+> 2. opengauss无require子句
+> 3. MySQL所授予的权限为全局、数据库、表和例程级别。opengauss不支持赋予权限给全局级别（*.*）、默认数据库（*）
+> 4. MySQL若只是赋予CREATE权限给数据库级别（db_name.*）*，则可直接对应到openGauss的SCHEMA；若赋予权限ALTER、DELETE、INDEX、INSERT、REFERENCES、SELECT、UPDATE给数据库级别（db_name.），其实是对所有的表赋权，翻译到openGauss应该是 ALL TABLES IN SCHEMA schema_name；若赋予权限EXECUTE、ALTER ROUTINE给数据库级别（db_name.*）*,其实是对所有的函数和存储过程赋权，翻译到openGauss应该是ALL FUNCTIONS\PROCEDURE IN SCHEMA schema_name；MySQL若赋予权限ALL[PRIVILEAGE]、DROP给数据库级别（db_name.）,则翻译为不仅对openGauss的schema赋权还有对其下的所有表赋权。其余赋予给数据库级别（db_name.*）的权限CREATE ROUNTION、CREATE TEMPORARY TABLES、CREATE VIEW、EVENT、LOCK TABLES、SHOW VIEW、TRIGGER，openGauss不支持
+> 5. MySQL若赋予权限给特定的FUNCTION或PROCEDURE，openGauss不能兼容,因为opengauss的FUNCTION或PROCEDURE都必须带有参数类型
+> 6. MySQL如果赋予权限给特定的TABLE（db_name.tbl_name、tbl_name），其中权限ALTER、DELETE、DROP、INSERT、REFERENCES、SELECT、UPDATE、INDEX、GRANT OPTION、ALL可以成功翻译openGauss对应的特定TABLE的权限，并且需要把表所属模式的USAGE权限同时赋予该用户。其余权限CREATE、CREATE VIEW、LOCK TABLES、SHOW VIEW、TRIGGER、USAGE，openGauss不支持
+> 7. opengauss的用户不带有hostname，mysql转换会丢失信息
+
+### [13.7.1.5 RENAME USER Statement](https://dev.mysql.com/doc/refman/5.7/en/rename-user.html)
+
+> 1. 通过ALTER USER改变用户名
+> 2. druid无法解析该语句多个用户同时重命名
+
+### [13.7.1.6 REVOKE Statement](https://dev.mysql.com/doc/refman/5.7/en/revoke.html)
+
+> 1. 见[13.7.1.4 GRANT Statement](https://dev.mysql.com/doc/refman/5.7/en/grant.html)
+
+### [13.7.1.7 SET PASSWORD Statement](https://dev.mysql.com/doc/refman/5.7/en/set-password.html)
+
+> 1. openGauss不存在该语句
+
+### [13.7.2 Table Maintenance Statements](https://dev.mysql.com/doc/refman/5.7/en/table-maintenance-statements.html)
+
+> 1. [13.7.2.1 ANALYZE TABLE Statement](https://dev.mysql.com/doc/refman/5.7/en/analyze-table.html)无法兼容。其中MySQL的ANALYZEA TABLE语句与openGauss不兼容。openGuass的ANALYZE非临时表不能在一个匿名块、事务块、函数或存储过程内被执行。而MySQL没有此限制。
+> 2. openGauss不存在[13.7.2.2 CHECK TABLE Statement、](https://dev.mysql.com/doc/refman/5.7/en/check-table.html)[13.7.2.3 CHECKSUM TABLE Statement、](https://dev.mysql.com/doc/refman/5.7/en/checksum-table.html)[13.7.2.4 OPTIMIZE TABLE Statement、](https://dev.mysql.com/doc/refman/5.7/en/optimize-table.html)[13.7.2.5 REPAIR TABLE Statement](https://dev.mysql.com/doc/refman/5.7/en/repair-table.html)
+
+### [13.7.3 Plugin and Loadable Function Statements](https://dev.mysql.com/doc/refman/5.7/en/component-statements.html)
+
+> 1. openGauss不存在该语句
+
+### [13.7.4 SET Statements](https://dev.mysql.com/doc/refman/5.7/en/set-statement.html)
+
+> 1. [13.7.4.1 SET Syntax for Variable Assignment](https://dev.mysql.com/doc/refman/5.7/en/set-variable.html) openGauss不支持user_var_name、local_var_name、 system_var_name
+> 2.  openGauss不存在[13.7.4.2 SET CHARACTER SET Statement、](https://dev.mysql.com/doc/refman/5.7/en/set-character-set.html)[13.7.4.3 SET NAMES Statement](https://dev.mysql.com/doc/refman/5.7/en/set-names.html)
+
+### [13.7.5 SHOW Statements](https://dev.mysql.com/doc/refman/5.7/en/show.html)
+
+> 1. openGauss不存在该语句
+
+### [13.7.6 Other Administrative Statements](https://dev.mysql.com/doc/refman/5.7/en/other-administrative-statements.html)
+
+> 1. openGauss不存在[13.7.6.1 BINLOG Statement、](https://dev.mysql.com/doc/refman/5.7/en/binlog.html)[13.7.6.2 CACHE INDEX Statement、](https://dev.mysql.com/doc/refman/5.7/en/cache-index.html)[13.7.6.3 FLUSH Statement、](https://dev.mysql.com/doc/refman/5.7/en/flush.html)[13.7.6.4 KILL Statement、](https://dev.mysql.com/doc/refman/5.7/en/kill.html)[13.7.6.5 LOAD INDEX INTO CACHE Statement](https://dev.mysql.com/doc/refman/5.7/en/load-index.html)
+> 2. [13.7.6.6 RESET Statement](https://dev.mysql.com/doc/refman/5.7/en/reset.html)无法兼容。openGauss不支持MySQL的reset_option
+
+### [13.8 Utility Statements](https://dev.mysql.com/doc/refman/5.7/en/sql-utility-statements.html)
+
+> 1. openGauss不存在[13.8.1 DESCRIBE Statement](https://dev.mysql.com/doc/refman/5.7/en/describe.html)[、](https://dev.mysql.com/doc/refman/5.7/en/cache-index.html)[13.8.3 HELP Statement](https://dev.mysql.com/doc/refman/5.7/en/help.html)
+> 2. [13.8.2 EXPLAIN Statement](https://dev.mysql.com/doc/refman/5.7/en/explain.html)目前不翻译EXPLAIN语句，因为MySQL与openGauss的EXPLAIN输出不一样
