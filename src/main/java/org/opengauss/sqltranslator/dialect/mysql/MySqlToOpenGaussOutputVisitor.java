@@ -450,14 +450,22 @@ public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
         boolean mysqlSpecial = false;
         if (DbType.mysql == this.dbType)
             mysqlSpecial = ("NAMES".equalsIgnoreCase(tagetString) || "CHARACTER SET".equalsIgnoreCase(tagetString)
-                    || "CHARSET".equalsIgnoreCase(tagetString) || tagetString.startsWith("@"));
+                    || "CHARSET".equalsIgnoreCase(tagetString) || "AUTOCOMMIT".equalsIgnoreCase(tagetString)
+                    || tagetString.startsWith("@"));
         if (!mysqlSpecial) {
             x.getTarget().accept(this);
             print0(" := ");
             x.getValue().accept(this);
         } else {
-            logger.error("openGauss does not support set " + tagetString.toUpperCase() + getTypeAttribute(x));
-            errHandle(x);
+            if ("AUTOCOMMIT".equalsIgnoreCase(tagetString)) {
+                print0("SET ");
+                x.getTarget().accept(this);
+                print0(" = ");
+                x.getValue().accept(this);
+            } else {
+                logger.error("openGauss does not support set " + tagetString.toUpperCase() + getTypeAttribute(x));
+                errHandle(x);
+            }
         }
         return false;
     }
@@ -3310,7 +3318,7 @@ public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
             gaussFeatureNotSupportLog("GLOBAL when it sets transaction" + getTypeAttribute(x));
         }
         if (x.getSession() != null && x.getSession().booleanValue()) {
-            printUcase("SET SESSION CHARACTERISTICS AS TRANSACTION");
+            printUcase("SESSION CHARACTERISTICS AS TRANSACTION ");
         } else
             printUcase("LOCAL TRANSACTION ");
         if (x.getIsolationLevel() != null) {
