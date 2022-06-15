@@ -1,6 +1,6 @@
 DELETE
 -- LOW_PRIORITY IGNORE QUICK
-FROM testFunction PARTITION (p1)
+FROM "testFunction" PARTITION (p1)
 WHERE id > 1
 -- ORDER BY id
 -- LIMIT 1

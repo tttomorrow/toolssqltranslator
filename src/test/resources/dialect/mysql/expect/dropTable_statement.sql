@@ -1,3 +1,3 @@
 DROP TABLE
 -- TEMPORARY
-IF EXISTS testTableOptions RESTRICT;
+IF EXISTS "testTableOptions" RESTRICT;

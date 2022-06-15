@@ -25,16 +25,16 @@ REVOKE ALTER, DELETE, DROP, INDEX, INSERT, REFERENCES, SELECT, UPDATE ON ALL TAB
 ;
 -- incompatible privilege
 -- incompatible privilege
-REVOKE ALL ON testRevoke FROM mysql_test
+REVOKE ALL ON "testRevoke" FROM mysql_test
 -- @'%'
 ;
-REVOKE ALTER, DELETE, DROP, INDEX, INSERT, REFERENCES, SELECT, UPDATE ON testRevoke FROM mysql_test
+REVOKE ALTER, DELETE, DROP, INDEX, INSERT, REFERENCES, SELECT, UPDATE ON "testRevoke" FROM mysql_test
 -- @'%'
 ;
-REVOKE INSERT(id), REFERENCES(id), SELECT(id), UPDATE(id) ON testRevoke FROM mysql_test
+REVOKE INSERT(id), REFERENCES(id), SELECT(id), UPDATE(id) ON "testRevoke" FROM mysql_test
 -- @'%'
 ;
-REVOKE ALTER, DELETE, DROP, INDEX, INSERT, REFERENCES, SELECT, UPDATE ON testRevoke FROM mysql_test
+REVOKE ALTER, DELETE, DROP, INDEX, INSERT, REFERENCES, SELECT, UPDATE ON "testRevoke" FROM mysql_test
 -- @'%'
 ;
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA mysql_database FROM mysql_test

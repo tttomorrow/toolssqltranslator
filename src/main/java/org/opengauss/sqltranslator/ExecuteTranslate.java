@@ -17,9 +17,10 @@ public class ExecuteTranslate {
 
     public static void main(String[] args) {
         String raw_sql = "";
-        //if the encoded sql is passed in through the --base64 parameter, the sql needs to be decoded
+        // if the encoded sql is passed in through the --base64 parameter, the sql needs
+        // to be decoded
         if (args.length == 2 && args[0].equals("--base64")) {
-            //decode sql
+            // decode sql
             byte[] decode = Base64.getDecoder().decode(args[1]);
             try {
                 raw_sql = new String(decode, "utf-8");
@@ -36,7 +37,7 @@ public class ExecuteTranslate {
         }
     }
 
-    public static String translateMysql2openGauss(String Sql_in,boolean debug) {
+    public static String translateMysql2openGauss(String Sql_in, boolean debug) {
         final StringBuilder appender = new StringBuilder();
         final MySqlToOpenGaussOutputVisitor visitor = new MySqlToOpenGaussOutputVisitor(appender);
 
@@ -47,12 +48,12 @@ public class ExecuteTranslate {
         for (SQLStatement statement : sqlStatements) {
             statement.accept(visitor);
             visitor.println();
-            if(debug){
+            if (debug) {
                 System.out.println(appender.toString());
-            }else{
+            } else {
                 res.append(appender.toString());
             }
-            appender.delete(0,appender.length());
+            appender.delete(0, appender.length());
         }
 
         return res.toString();

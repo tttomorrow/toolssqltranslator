@@ -35,3 +35,5 @@ create table testIndexKey(
     col4 int,
     fulltext test_index (t)
 );
+
+

@@ -28,12 +28,12 @@ limit 4 offset 3
  LOCK IN SHARE MODE;
 
 -- hello
-select a.id, b.id
+select a.Id, B.Id
 from hello.tb1 as a
- straight_join hello.tb1_1 as b 
+ straight_join hello.tb1_1 as B
 for
 update nowait;
 
 
 select *
-from sakila.actor lock in share mode;
+from Sakila.actor lock in share mode;

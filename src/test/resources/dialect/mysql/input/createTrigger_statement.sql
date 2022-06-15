@@ -12,4 +12,4 @@ CREATE Definer='root' TRIGGER tr_before_insert_employee
                     repeat
                         set new.work_year=new.work_year+1;
                     until  new.work_year>10 end repeat;
-                END
+                END;

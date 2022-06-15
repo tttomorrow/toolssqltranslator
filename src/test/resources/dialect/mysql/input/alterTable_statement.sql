@@ -4,19 +4,19 @@ alter table testAlterTable2 ADD COLUMN (col4 decimal(4,2),col5 float);
 
 alter table testAlterTable3 add index (col1) using btree comment 'col1' key_block_size = 128 with parser  p;
 
-alter table testAlterTable4 add key  index_name (col1,col2);
+alter table testAlterTable4 add key  Index_name (col1,col2);
 
-alter table testAlterTable5 add fulltext index i4 (col4);
+alter table testAlterTable5 add fulltext index I4 (col4);
 
-alter table testAlterTable6 add  constraint  pk_id primary key pk_index using btree (col1);
+alter table testAlterTable6 add  constraint  pk_Id primary key pk_Index using btree (col1);
 
 alter table testAlterTable7 add constraint  unique_constraint  unique index   (col2);
 
-alter table testAlterTable8 add constraint  fk_pid2 foreign key  (col5) references parent(id) match simple  on delete  cascade;
+alter table testAlterTable8 add constraint  Fk_pid2 foreign key  (col5) references parent(id) match simple  on delete  cascade;
 
 alter table testAlterTable9 add check(col5 > 0),algorithm = inplace;
 
-alter table testAlterTable10 alter col5 set default 4;
+alter table testAlterTable10 alter COL5 set default 4;
 
 alter table testAlterTable11 change col5 col6 int not null first;
 
@@ -50,7 +50,7 @@ alter table testAlterTable24 rename to testAlterTable, modify col2 int;
 
 alter table testAlterTable25 auto_increment = 1;
 
-alter table testAlterTable26 TABLESPACE ts1 storage  disk;
+alter table testAlterTable26 TABLESPACE TS1 storage  disk;
 
 ALTER TABLE t27 ADD PARTITION (PARTITION p3 VALUES LESS THAN (2002));
 
@@ -74,7 +74,7 @@ alter table db.table
               partition p20150301 values less than ('2015-04-01'),
               partition pMax values less than (maxvalue));
 
-ALTER TABLE e EXCHANGE PARTITION p0 WITH TABLE e2;
+ALTER TABLE e EXCHANGE PARTITION P0 WITH TABLE e2;
 
 ALTER TABLE e remove partitioning ;
 

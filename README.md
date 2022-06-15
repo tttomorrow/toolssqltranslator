@@ -2,7 +2,7 @@
 
 ## 介绍
 
-openGauss-tools-sql-translator是一个使用java编写的实现MySQL向openGauss语法转换的翻译器。其基于1.2.8版本Druid实现，利用Druid对AST的访问规则，继承MySQLOutPutVisitor并重载其visit方法，修改其对MySQL语句 AST的访问结果，最终输出openGauss语法的语句。应用于从MySQL到openGauss。
+openGauss-tools-sql-translator是一个使用java编写的实现MySQL向openGauss语法转换的翻译器。其基于1.2.8版本Druid实现，利用Druid对AST的访问规则，继承MySQLOutPutVisitor并重载其visit方法，修改其对MySQL语句 AST的访问结果，最终输出openGauss语法的语句。
 
 ## 编译步骤
 
@@ -60,7 +60,7 @@ openGauss-tools-sql-translator是一个使用java编写的实现MySQL向openGaus
 
 ### [13.1.11 CREATE DATABASE Statement](https://dev.mysql.com/doc/refman/5.7/en/create-database.html)
 
-> 1. 对应openGauss的SCHEMA，MySQL的create_option有 CHARACTER SET或 COLLATE字段，openGauss不支持
+> 1. 翻译成openGauss的CREATE DATABASE，MySQL的create_option有 CHARACTER SET或 COLLATE字段，openGauss不支持
 
 ### [13.1.12 CREATE EVENT Statement](https://dev.mysql.com/doc/refman/5.7/en/create-event.html)
 
@@ -81,8 +81,9 @@ openGauss-tools-sql-translator是一个使用java编写的实现MySQL向openGaus
 > * algorithm=inplace ，lock=default
 >
 > 3. 其他情况的lock和algorithm字段，openGauss不支持
-> 4. 当using hash和asc|desc同时存在时会报错，因为openGauss的hash只能处理简单等值比较，using btree才能用asc|desc
-> 5. openGauss不支持index_option（index_type除外）
+> 4. openGauss的key_part部分不支持(length)，即为col_name指定长度
+> 5. 当using hash和asc|desc同时存在时会报错，因为openGauss的hash只能处理简单等值比较，using btree才能用asc|desc
+> 6. openGauss不支持index_option（index_type除外）
 
 ### [13.1.15 CREATE LOGFILE GROUP Statement](https://dev.mysql.com/doc/refman/5.7/en/create-logfile-group.html)
 
@@ -101,12 +102,13 @@ openGauss-tools-sql-translator是一个使用java编写的实现MySQL向openGaus
 ### [13.1.18 CREATE TABLE Statement](https://dev.mysql.com/doc/refman/5.7/en/create-table.html)
 
 > 1. 数据类型: openGauss 不支持YEAR类型，ENUM和SET类型
-> 2. MySQL的createde_finition中，openGauss不支持在表约束中创建INDEX | KEY、 {FULLTEXT | SPATIAL} [INDEX | KEY]，也不支持index_type、index_option、index_name。此外，Druid无法识别unique约束的约束名symbol
-> 3. MySQL的column_definition中，openGauss不支持列约束中的COMMENT 、COLUMNFORMAT、STORAGE、GENERATED ALWAYS、VIRTUAL | STORED字段。AUTO_INCREMENT在openGauss中用bigserial达到整数自增的效果。COLLATE字段两者不兼容
-> 4. MySQL的table_option中，openGauss只支持TABLESPACE(不支持[STORAGE {DISK | MEMORY}]字段）
-> 5. openGauss 的create table as query expression 和 mysql有本质不同。MySQL在旧表上新加字段，openGauss是完全复制一样的表，无法转换
-> 6. MySQL的like 默认源表保留新表的默认值表达式，存储引擎属性，check 约束，注释。所以在openGauss添加额外的表属性信息，like语句的like_option默认为INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES INCLUDING STORAGE
-> 7. partition：
+> 2. MySQL的createde_finition中，openGauss不支持在表约束中创建INDEX | KEY、 {FULLTEXT | SPATIAL} [INDEX | KEY]，将其翻译为CREATE TABLE和CREATE INDEX ON TABLE两个语句。{FULLTEXT | SPATIAL}省略。
+> 3. MySQL的createde_finition中，openGauss不支持index_type、index_option、index_name。此外，Druid无法识别unique约束的约束名symbol
+> 4. MySQL的column_definition中，openGauss不支持列约束中的COMMENT 、COLUMNFORMAT、STORAGE、GENERATED ALWAYS、VIRTUAL | STORED字段。AUTO_INCREMENT在openGauss中用bigserial达到整数自增的效果。COLLATE字段两者不兼容
+> 5. MySQL的table_option中，openGauss只支持TABLESPACE(不支持[STORAGE {DISK | MEMORY}]字段）
+> 6. openGauss 的create table as query expression 和 mysql有本质不同。MySQL在旧表上新加字段，openGauss是完全复制一样的表，无法转换
+> 7. MySQL的like 默认源表保留新表的默认值表达式，存储引擎属性，check 约束，注释。所以在openGauss添加额外的表属性信息，like语句的like_option默认为INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES INCLUDING STORAGE
+> 8. partition：
 >
 > * openGauss不支持LINEAR字段
 > * openGauss的PARTITION BY HASH的expr只翻译单个字段，openGauss 无法确保expr能够被正确解析；MySQL的PARTITION BY KEY需要翻译成 PARTITION BY HASH(column)，column_list只支持单列；PARTITION BY RANGE的expr仅支持单列，多列则解析失败，column_list支持多列;PARTITION BY LIST的expr只翻译单个字段，无法确保expr能够被正确解析,column_list也仅支持单列
@@ -236,6 +238,7 @@ openGauss-tools-sql-translator是一个使用java编写的实现MySQL向openGaus
 > 4. MySQL的SELECT... INTO var_list，openGauss仅支持变量是存储过程或函数参数，或存储过程或函数局部变量，不支持用户定义的变量（@开头的）。MySQL的SELECT ... INTO OUTFILE、SELECT ... INTO DUMPFILE，openGauss也不支持
 > 5. druid不解析PARTITION partition_list字段、SELECT ... INTO DUMPFILE
 > 6. 在字段table_references中，MySQL 支持 INNER、CROSS、LEFT [OUTER]、RIGHT [OUTER]、NATURAL、STRAIGHT_JOIN六种join类型，openGauss 不支持 STRAIGHT_JOIN 这种类型，STRAIGHT_JOIN 功能同 JOIN 类似，使用 JOIN 替代
+> 7. openGauss的存储过程不能用select返回数据
 
 ### [13.2.10 Subqueries](https://dev.mysql.com/doc/refman/5.7/en/subqueries.html)
 
@@ -268,7 +271,7 @@ openGauss-tools-sql-translator是一个使用java编写的实现MySQL向openGaus
 
 ### [13.6.2 Statement Labels](https://dev.mysql.com/doc/refman/5.7/en/statement-labels.html)
 
-> 1. 完全支持
+> 1. Druid解析label时，需要使用"label: "，即冒号后需要有空格才能解析
 
 ### [13.6.3 DECLARE Statement](https://dev.mysql.com/doc/refman/5.7/en/declare.html)
 
@@ -356,3 +359,7 @@ openGauss-tools-sql-translator是一个使用java编写的实现MySQL向openGaus
 
 > 1. openGauss不存在[13.8.1 DESCRIBE Statement](https://dev.mysql.com/doc/refman/5.7/en/describe.html)[、](https://dev.mysql.com/doc/refman/5.7/en/cache-index.html)[13.8.3 HELP Statement](https://dev.mysql.com/doc/refman/5.7/en/help.html)
 > 2. [13.8.2 EXPLAIN Statement](https://dev.mysql.com/doc/refman/5.7/en/explain.html)目前不翻译EXPLAIN语句，因为MySQL与openGauss的EXPLAIN输出不一样
+
+### 注意事项
+
+1. 对象迁移时所有包含大小写的字段名（包括表名、数据库名、列名、别名、用户名、变量名、索引名、分区名等）保持大小写迁移。当在openGauss访问这些字段时，需要使用双引号才能识别该字段。

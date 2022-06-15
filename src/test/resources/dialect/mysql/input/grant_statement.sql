@@ -19,7 +19,7 @@ grant alter ,delete,drop,index,insert,references ,select,update on delphis.waitC
 grant create,create view,show view,trigger,usage on delphis.waitCopy to 'usr_replica'@'%';
 
 -- db.table列权限，均适配
-grant insert (id),references (id),select (id),update (id) on delphis.waitCopy to 'usr_replica'@'%';
+grant insert (ID),references (id),select (id),update (id) on delphis.waitCopy to 'usr_replica'@'%';
 
 -- table
 grant alter ,delete,drop,index,insert,references ,select,update on waitCopy to 'usr_replica'@'%' with grant option;

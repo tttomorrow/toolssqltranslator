@@ -103,6 +103,8 @@ create table t10 (
     constraint constraint_name  foreign key (col1) references table2 (col1) match partial on update set null,
     constraint constraint_name1 primary key indexname1 (col1) COMMENT 'string',
     constraint constraint_name2 unique  indexname2 using btree(col1),
+     INDEX idIndex USING BTREE (col1),
+    KEY  nameIndex USING HASH (name),
     fulltext index(col1),
     CONSTRAINT W_CONSTR_KEY2 CHECK(col1 > 0 AND col2 IS NOT NULL),
     col3 char(1))

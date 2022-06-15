@@ -1,28 +1,24 @@
 CREATE TABLE test1 (
-	id BIGSERIAL PRIMARY KEY,
+	"id" BIGSERIAL PRIMARY KEY,
 	name CHAR(2) NOT NULL UNIQUE DEFAULT 'GA'
 -- COMMENT 'char'
 -- COLUMN_FORMAT fixed
 -- STORAGE DISK
-
 );
-CREATE TABLE testIndexKey (
+COMMENT ON COLUMN test1.name IS 'char';
+CREATE TABLE "testIndexKey" (
 	id INTEGER,
 	name CHAR(2)
--- INDEX idIndex USING BTREE()
-
--- KEY nameIndex USING HASH (name)
-
 );
-CREATE TABLE testIndexKey (
+CREATE INDEX "idIndex" ON "testIndexKey" USING btree(id);
+CREATE INDEX "nameIndex" ON "testIndexKey" USING hash(name);
+CREATE TABLE "testIndexKey" (
 	id INTEGER,
-
--- INDEX idIndex USING BTREE()
-name CHAR(2)
--- KEY nameIndex USING HASH (name)
-
+	name CHAR(2)
 );
-CREATE TABLE testPrimaryUniqueKey (
+CREATE INDEX "idIndex" ON "testIndexKey" USING btree(id);
+CREATE INDEX "nameIndex" ON "testIndexKey" USING hash(name);
+CREATE TABLE "testPrimaryUniqueKey" (
 	id INTEGER,
 	name CHAR(2),
 	parent_id INTEGER,
@@ -38,17 +34,13 @@ CREATE TABLE testPrimaryUniqueKey (
 	col5 INTEGER,
 	CONSTRAINT ck_con CHECK (id > 0)
 --  NOT ENFORCED
-
 );
-CREATE TABLE testIndexKey (
+CREATE TABLE "testIndexKey" (
 	id INTEGER,
 	name CHAR(2),
 	t TEXT,
-
--- INDEX id_index USING btree()
-
--- KEY name_key USING hash (name)
-col4 INTEGER
--- FULLTEXT INDEX test_index()
-
+	col4 INTEGER
 );
+CREATE INDEX id_index ON "testIndexKey" USING btree(id);
+CREATE INDEX name_key ON "testIndexKey" USING hash(name);
+CREATE INDEX test_index ON "testIndexKey"(t);
