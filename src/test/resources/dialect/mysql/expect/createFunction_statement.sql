@@ -1,6 +1,6 @@
 CREATE
 -- DEFINER 'root'@'%'
-FUNCTION doIterate(
+FUNCTION "doIterate"(
 		p INTEGER,
 		q INTEGER
 	)
@@ -11,7 +11,7 @@ FUNCTION doIterate(
 		<<label1>>LOOP
 			p := p - 1;
 			INSERT
-			INTO testFunction
+			INTO "testFunction"
 			VALUES (DEFAULT, concat('a', p));
 			IF p < 10 THEN
 				EXIT label1;

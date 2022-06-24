@@ -1,4 +1,4 @@
-CREATE TABLE testDataType (
+CREATE TABLE "testDataType" (
 	id1 BIGSERIAL PRIMARY KEY,
 	id2 SMALLINT,
 	id3 INTEGER,
@@ -45,6 +45,6 @@ CREATE TABLE testDataType (
 	id41 BYTEA,
 	id42 JSON
 );
-CREATE TABLE testDataType2 (
+CREATE TABLE "testDataType2" (
 	id1 FLOAT(4) PRIMARY KEY
 );
