@@ -60,7 +60,7 @@ openGauss-tools-sql-translator是一个使用java编写的实现MySQL向openGaus
 
 ### [13.1.11 CREATE DATABASE Statement](https://dev.mysql.com/doc/refman/5.7/en/create-database.html)
 
-> 1. 翻译成openGauss的CREATE DATABASE，MySQL的create_option有 CHARACTER SET或 COLLATE字段，openGauss不支持
+> 1. 翻译成openGauss的CREATE SCHEMA，MySQL的create_option有 CHARACTER SET或 COLLATE字段，openGauss不兼容
 
 ### [13.1.12 CREATE EVENT Statement](https://dev.mysql.com/doc/refman/5.7/en/create-event.html)
 
@@ -137,7 +137,7 @@ openGauss-tools-sql-translator是一个使用java编写的实现MySQL向openGaus
 
 ### [13.1.22 DROP DATABASE Statement](https://dev.mysql.com/doc/refman/5.7/en/drop-database.html)
 
-> 1. 完全支持
+> 1. 翻译成openGauss的DROP SCHEMA语句
 
 ### [13.1.23 DROP EVENT Statement](https://dev.mysql.com/doc/refman/5.7/en/drop-event.html)
 

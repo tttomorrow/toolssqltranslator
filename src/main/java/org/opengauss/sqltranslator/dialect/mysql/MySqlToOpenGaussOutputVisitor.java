@@ -715,11 +715,18 @@ public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
         if (x.isDeterministic()) {
             print(ucase ? " IMMUTABLE" : " immutable");
         }
-        SQLStatement block = x.getBlock();
         println();
         print0("AS $$");
         println();
-        block.accept(this);
+        if ((x.getBlock().getClass()) == SQLBlockStatement.class) {
+            x.getBlock().accept(this);
+        } else {
+            println("BEGIN");
+            x.getBlock().accept(this);
+            print0(";");
+            println();
+            printUcase("END");
+        }
         return false;
     }
 
@@ -810,7 +817,15 @@ public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
         println();
         print0("AS ");
         println();
-        x.getBlock().accept(this);
+        if ((x.getBlock().getClass()) == SQLBlockStatement.class) {
+            x.getBlock().accept(this);
+        } else {
+            println("BEGIN");
+            x.getBlock().accept(this);
+            print0(";");
+            println();
+            printUcase("END");
+        }
         return false;
     }
 
