@@ -39,7 +39,7 @@ public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
     private static final HashSet<String> commonSchemaPrivilegeSet = new HashSet<>();
     private static final HashSet<String> tablePrivilegeSet = new HashSet<>();
     private static final HashSet<String> routinePrivilegeSet = new HashSet<>();
-
+    private static final HashSet<String> reservedwordSet = new HashSet<>();
     static {
         incompatiblePrivilegeSet.add("PROXY");
         incompatiblePrivilegeSet.add("TRIGGER");
@@ -71,7 +71,7 @@ public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
         routinePrivilegeSet.add("ALTER");
         routinePrivilegeSet.add("ALL");
         routinePrivilegeSet.add("ALL PRIVILEGES");
-
+        reservedwordSet.add("number");
     }
     private final StringBuilder sb = (StringBuilder) appender;
 
@@ -1962,7 +1962,6 @@ public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
         if (nameHash == Constants.TIME || nameHash == Constants.TIMESTAMP) {
             this.print0(this.ucase ? " WITHOUT TIME ZONE" : " without time zone");
         }
-        /* index by 貌似没得翻译 */
         this.parameterized = parameterized;
     }
 
@@ -2319,7 +2318,7 @@ public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
                 this.appender.append(text.substring(1, text.length() - 1));
                 this.appender.append(this.quote);
             } else {
-                if (hasUpper(text)) {
+                if (hasUpper(text) || hasReservedword(text)) {
                     this.appender.append(this.quote);
                     this.appender.append(text);
                     this.appender.append(this.quote);
@@ -2332,6 +2331,12 @@ public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
         }
     }
 
+    public static boolean hasReservedword(String str) {
+        if (reservedwordSet.contains(str))
+            return true;
+        else
+            return false;
+    }
     public static boolean hasUpper(String str) {
         for (int i = 0; i < str.length(); i++) {
             char c0 = str.charAt(i);

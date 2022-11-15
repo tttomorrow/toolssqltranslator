@@ -235,4 +235,10 @@ public class SqlTranslateTest {
         String[] sqlContents = execFile("revoke_statement.sql");
         assertEquals(sqlContents[1], sqlContents[2]);
     }
+    
+    @Test
+    public void test_hasReservedWord() throws IOException {
+        String[] sqlContents = execFile("hasReservedWord_statement.sql");
+        assertEquals(sqlContents[1], sqlContents[2]);
+    }
 }
