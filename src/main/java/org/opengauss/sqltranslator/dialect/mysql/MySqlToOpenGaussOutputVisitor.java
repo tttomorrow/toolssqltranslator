@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
     private static final Logger logger = LoggerFactory.getLogger(MySqlToOpenGaussOutputVisitor.class);
     private static final String err = "err";
+    private boolean column_case_sensitive;
     private final Map<Integer, String> SQLSetQuantifierMap = new HashMap<Integer, String>() {
         {
             put(0, "");
@@ -72,11 +73,20 @@ public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
         routinePrivilegeSet.add("ALL");
         routinePrivilegeSet.add("ALL PRIVILEGES");
         reservedwordSet.add("number");
+        reservedwordSet.add("user");
+        reservedwordSet.add("for");
+        reservedwordSet.add("check");
+        reservedwordSet.add("all");
     }
     private final StringBuilder sb = (StringBuilder) appender;
 
     public MySqlToOpenGaussOutputVisitor(Appendable appender) {
         super(appender);
+    }
+
+    public MySqlToOpenGaussOutputVisitor(Appendable appender, boolean column_case_sensitive) {
+        super(appender);
+        this.column_case_sensitive = column_case_sensitive;
     }
 
     private void printNotSupportWord(String word) {
@@ -1334,16 +1344,24 @@ public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
     public void printnamewithquote(String text) {
         char c0 = text.charAt(0);
         if (c0 == '"' && text.charAt(text.length() - 1) == '"') {
-            print(text);
+            text = text.substring(1, text.length() - 1);
+            if (hasReservedword(text) || column_case_sensitive || text.trim().contains(" ")) {
+                print("\"" + text + "\"");
+            } else {
+                print(text);
+            }
         } else if (c0 == '`' && text.charAt(text.length() - 1) == '`') {
             text = text.substring(1, text.length() - 1);
-            print("\"" + text + "\"");
-        } else {
-            if (hasUpper(text))
+            if (hasReservedword(text) || column_case_sensitive) {
                 print("\"" + text + "\"");
-            else
+            } else {
                 print(text);
-        }
+            }
+        } else if ((hasUpper(text) && column_case_sensitive) || hasReservedword(text))
+            print("\"" + text + "\"");
+        else
+            print(text);
+
     }
 
     @Override
@@ -2310,21 +2328,29 @@ public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
             }
             char c0 = text.charAt(0);
             if (c0 == '"' && text.charAt(text.length() - 1) == '"') {
-                this.appender.append(this.quote);
-                this.appender.append(text.substring(1, text.length() - 1));
-                this.appender.append(this.quote);
-            } else if (c0 == '`' && text.charAt(text.length() - 1) == '`') {
-                this.appender.append(this.quote);
-                this.appender.append(text.substring(1, text.length() - 1));
-                this.appender.append(this.quote);
-            } else {
-                if (hasUpper(text) || hasReservedword(text)) {
+                text = text.substring(1, text.length() - 1);
+                if (hasReservedword(text) || column_case_sensitive || text.trim().contains(" ")) {
                     this.appender.append(this.quote);
                     this.appender.append(text);
                     this.appender.append(this.quote);
                 } else {
                     this.appender.append(text);
                 }
+            } else if (c0 == '`' && text.charAt(text.length() - 1) == '`') {
+                text = text.substring(1, text.length() - 1);
+                if (hasReservedword(text) || column_case_sensitive) {
+                    this.appender.append(this.quote);
+                    this.appender.append(text);
+                    this.appender.append(this.quote);
+                } else {
+                    this.appender.append(text);
+                }
+            } else if ((hasUpper(text) && column_case_sensitive) || hasReservedword(text)) {
+                this.appender.append(this.quote);
+                this.appender.append(text);
+                this.appender.append(this.quote);
+            } else {
+                this.appender.append(text);
             }
         } catch (IOException e) {
             throw new RuntimeException("println error", e);
@@ -2332,11 +2358,12 @@ public class MySqlToOpenGaussOutputVisitor extends MySqlOutputVisitor {
     }
 
     public static boolean hasReservedword(String str) {
-        if (reservedwordSet.contains(str))
+        if (reservedwordSet.contains(str.toLowerCase()))
             return true;
         else
             return false;
     }
+
     public static boolean hasUpper(String str) {
         for (int i = 0; i < str.length(); i++) {
             char c0 = str.charAt(i);
