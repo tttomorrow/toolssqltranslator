@@ -17,29 +17,27 @@ public class ExecuteTranslate {
 
     public static void main(String[] args) {
         String raw_sql = "";
-        // if the encoded sql is passed in through the --base64 parameter, the sql needs
-        // to be decoded
-        if (args.length == 2 && args[0].equals("--base64")) {
-            // decode sql
-            byte[] decode = Base64.getDecoder().decode(args[1]);
-            try {
-                raw_sql = new String(decode, "utf-8");
-            } catch (UnsupportedEncodingException e) {
-                logger.error(e.getLocalizedMessage());
-            }
-        } else {
-            raw_sql = args[0];
+        boolean column_case_sensitive = true;
+        if (args.length == 3) {
+            column_case_sensitive = false;
+        }
+        byte[] decode = Base64.getDecoder().decode(args[1]);
+        try {
+            raw_sql = new String(decode, "utf-8");
+        } catch (UnsupportedEncodingException e) {
+            logger.error(e.getLocalizedMessage());
         }
         try {
-            System.out.println(translateMysql2openGauss(raw_sql, false));
+            System.out.println(translateMysql2openGauss(raw_sql, false, column_case_sensitive));
         } catch (Exception e) {
             logger.error(e.getLocalizedMessage());
         }
     }
 
-    public static String translateMysql2openGauss(String Sql_in, boolean debug) {
+    public static String translateMysql2openGauss(String Sql_in, boolean debug,boolean column_case_sensitive) {
         final StringBuilder appender = new StringBuilder();
-        final MySqlToOpenGaussOutputVisitor visitor = new MySqlToOpenGaussOutputVisitor(appender);
+        final MySqlToOpenGaussOutputVisitor visitor = new MySqlToOpenGaussOutputVisitor(appender,
+                column_case_sensitive);
 
         final List<SQLStatement> sqlStatements = SQLUtils.parseStatements(Sql_in, DbType.mysql);
 

@@ -36,7 +36,7 @@ public class SqlTranslateTest {
         // expect SQL content. null if expect file does not exist.
         String expectSQLContent = expectFileURL == null ? "" : IOUtils.toString(expectFileURL, StandardCharsets.UTF_8);
         // translated SQL content
-        String tranSQLContent = ExecuteTranslate.translateMysql2openGauss(inputSQLContent, false);
+        String tranSQLContent = ExecuteTranslate.translateMysql2openGauss(inputSQLContent, false, true);
         // String tranSQLContent = exectranslate(inputSQLContent);
 
         expectSQLContent = expectSQLContent.trim().replaceAll("[ \t\r]+\n", "\n");
@@ -56,7 +56,7 @@ public class SqlTranslateTest {
         inputSQLContent = inputSQLContent.replaceAll("--.*", "");
         inputSQLContent = inputSQLContent.replaceAll("#.*", "");
         // translated SQL content
-        ExecuteTranslate.translateMysql2openGauss(inputSQLContent, true);
+        ExecuteTranslate.translateMysql2openGauss(inputSQLContent, true, true);
     }
 
     @Test
